@@ -1,0 +1,48 @@
+// function that create a permutation over GF2 of all the vector of n elements
+// params:
+// n number of elements of every vector
+function CreatePermutationF(n)
+	return Random(Sym({v : v in VectorSpace(GF(2), n)}));
+end function;
+
+// take a permutation of the vector of n elements in cyclic form
+// and retrun its ANF form
+// params: 
+// F a permutation of vectors in cyclic form
+// n the size of the vectors
+// TO TEST RUN:
+// F := CreatePermutationF(4);
+// GetANF4grade(F, 4);
+
+function GetANF4grade(F, n)
+// F is a vectorial boolean function
+	Vett := VectorSpace(GF(2), n);
+	VSet := {v : v in Vett};
+	Set := {i : i in [1..n]};
+	R<[x]> := PolynomialRing(GF(2), n);
+
+	L := Subsets(Set); // all polynonmial in f2 with at max 4 elemnts
+	L := {l : l in L | l ne {}}; // togliere il usbset 
+	J := [1];
+	for l in L do
+		J cat:= [&*[x[t]: t in l]]; // per ogni subset di interi crea un subset di polinomi
+	end for;
+
+	terms := [];
+	for i in [1..n] do
+		terms[i] := [(v^F)[i] : v in VSet];
+	end for;
+
+	evaluations := [Evaluate(J, ElementToSequence(v)) : v in VSet ];
+
+	M := Matrix(evaluations);
+
+	sol := Solution(M, [Vector(terms[i]) : i in [1..n]]);
+
+	res := [];
+	for j in [1..#sol] do
+		temp := ElementToSequence(sol[j]);
+		res cat:= [{J[i] : i in [1..#J] | temp[i] eq 1}];
+	end for;
+return res;
+end function;

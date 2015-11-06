@@ -1,0 +1,73 @@
+// implements a LFSR register that clock and shift right 
+// params: P the primitive polynomial, L the initial state, t number of outputs bits
+function RightLSFR(P,L,t)
+	res := [];
+	state := ElementToSequence(L);
+	P := Coefficients(P);
+	P := Prune(Reverse(P));
+	sequence := Reverse(ElementToSequence(P));	
+	states := [];
+	states cat:= [state];
+	for i in [1..t] do
+		// eval new element with the polynomial
+		newbit := [&+[state[i]*sequence[i] : i in [1..#state]]];
+		//output
+		res cat:= [state[#state]];
+		// shift 
+		state := Rotate(state, 1);
+		// update value
+		state[1] := newbit;
+		states cat:= [state];
+	end for;
+	return res, states;
+end function;
+
+//m majority function
+function majFun(X,Y,Z)
+	return X*Y+X*Z+Y*Z;
+end function;
+
+// toy A51 stream cipher
+// params:
+// S is a list with three initial states of the three registers
+// l is the number of outputs
+// to run try this:
+// S := [[GF(2)! 1, 1, 1, 1, 0],[GF(2)! 0, 0, 1, 1, 0, 0, 0 ],[GF(2)!1, 1, 0, 0, 1 ]];
+// ToyA51(S,32);
+function ToyA51(S,l)
+	R<[x]> := PolynomialRing(GF(2));
+	P1 := R![1, 0, 0, 1, 0, 1]; //x^5+x^2+1;
+	P2 := R![1, 0, 0, 0, 0, 0, 1, 1]; //x^7+x+1;
+	P3 := R![1, 0, 1, 0, 0, 1]; //x^5+x^3+1;
+	R1 := ElementToSequence(S[1]);
+	R2 := ElementToSequence(S[2]);
+	R3 := ElementToSequence(S[3]);
+	res := [];
+	for i in [1..l] do
+		majority := majFun(R1[5], R2[3], R3[4]);
+		if(majority eq R1[5]) then
+			x1,R1 := RightLSFR(P1,R1,1);
+			x1 := x1[1];
+			R1 := R1[2]; // first one is originale
+		else
+			x1 := R1[#R1];
+		end if;
+		if(majority eq R2[3]) then
+			x2,R2 := RightLSFR(P2,R2,1);
+			x2 := x2[1]; // first item of the list
+			R2 := R2[2]; // first one is originale
+		else
+			x2 := R2[#R2];
+		end if;
+		if(majority eq R3[4]) then
+			x3,R3 := RightLSFR(P3,R3,1);
+			x3 := x3[1];
+			R3 := R3[2]; // first one is originale
+		else
+			x3 := R3[#R3];
+		end if;
+		res cat:= [ x1 + x2 + x3];
+	end for;
+	return res;
+end function;
+
