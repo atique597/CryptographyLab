@@ -1,0 +1,150 @@
+// Toy Bloc Cipher (Translation Based block cipher)
+// P = (F2)^8 ---> (F2)^8 = C
+
+// Def S1: (F2)^4 ---> (F2)^4   is a permutation
+// Def S2: (F2)^4 ---> (F2)^4   is a permutation
+
+// KEY SCHEDULE:
+// apply this for each round:
+// take K in (F2)^8, divide into 2 brick of 4 bits
+// apply S1 to the first and S2 to the second
+// recompose by invert them (S2(X2), S1(X1))
+
+// MIXING LAYER:
+// using a fixed matrix (8x8)
+
+
+// ROUND 0
+// XOR between m and k0
+
+// ROUND 1 to R
+// 1) divide m into m1 (4bits) and m2(4bits)
+// 2) apply S-BOX: S1(m1) and S1(m2)
+// 3) apply the Mixing layer mul between the conlunm resulting from S-BOX and the matrix
+// 4) XOR the result with ki
+
+// NB 123:Hex; in magma will convert 123 into 0x78
+// IntegerToSequence(123,2) transform 123 to binaru string (we can use it also on hex numbers)
+// in order to get an 8 bits vector I can add something to the number and then cut it off from the binary representation to get exactly 8 bits
+
+function _getS1()
+	V4:=VectorSpace(GF(2),4);
+	V:={v: v in V4};
+	Sy4:=SymmetricGroup(V);
+	return Sy4 ! (V4 ! [1, 1, 0, 1], V4 ! [0, 1, 0, 1], V4 ! [1, 0, 1, 1], V4 ! [1, 0, 0, 1], V4 ! [0, 1, 1, 1], V4 ! [0, 0, 1, 0], V4 ! [0, 0, 0, 1])(V4 ! [1, 0, 1, 0], V4 ! [1, 1, 1, 1], V4 ! [1, 1, 1, 0], V4 ! [0, 1, 1, 0], V4 ! [0, 0, 1, 1])(V4 ! [0, 1, 0, 0], V4 ! [1, 0, 0, 0]);
+end function;
+
+function _getS2()
+	V4:=VectorSpace(GF(2),4);
+	V:={v: v in V4};
+	Sy4:=SymmetricGroup(V);	
+	return Sy4 ! (V4 ! [1, 1, 0, 0], V4 ! [1, 1, 1, 0], V4 ! [0, 0, 0, 0], V4 ! [1, 1, 0, 1], V4 ! [1, 1, 1, 1], V4 ! [1, 0, 0, 1], V4 ! [0, 1, 0, 0], V4 ! [0, 0, 0, 1], V4 ! [0, 0, 1, 0], V4 ! [0, 1, 1, 0], V4 ! [1, 0, 1, 1], V4 ! [0, 1, 1, 1], V4 ! [0, 0, 1, 1], V4 ! [0, 1, 0, 1])(V4 ! [1, 0, 1, 0], V4 ! [1, 0, 0, 0]);
+end function;
+
+function _keySchedule(K, n)
+	S1 := _getS1();
+	S2 := _getS2();
+	res := [];
+	for i in [1..n+1] do
+		res cat:= [K];
+		first := Vector(K[1..4])^S1;
+		second := Vector(K[5..8])^S2;
+		K := ElementToSequence(second) cat ElementToSequence(first);
+	end for;
+	return res;
+end function;
+
+function _mLay(vett)
+	//build matrix
+	V8:=VectorSpace(GF(2),8);
+	v := V8 ! [1,1,1,1,1,0,0,0];
+	matrixBuilder := [];
+	for i in [1..8] do
+		matrixBuilder cat:= [v];
+		Rotate(~v, 1);
+	end for;
+	X := Matrix(GF(2), 8, 8, matrixBuilder);
+	return ElementToSequence(Transpose(X*Matrix(GF(2), 8, 1, vett)));
+end function;
+
+function SBOX(m)
+	S1 := _getS1();
+	first := Vector(ElementToSequence(m)[1..4])^S1;
+	second := Vector(ElementToSequence(m)[5..8])^S1;
+	return ElementToSequence(first) cat ElementToSequence(second);
+end function;
+
+function ToyBlock(K,M,n)
+	// keys
+	roundKeys := _keySchedule(K, n);
+	// round 0
+	res := Vector(GF(2),M) + Vector(GF(2),roundKeys[1]);
+	for i in [2..n+1] do
+		res := SBOX(res);
+		res := _mLay(res);
+		res := Vector(GF(2),res) + Vector(GF(2),roundKeys[i]);
+	end for;
+	return res;
+end function;
+
+
+// Ex 2) 
+// change S1, S2 with a single sbox
+// such that S:(F2)^4 --> (F2)^4
+// as the inverse in F16 = GF(2,4)
+// with patch inversion	
+// S(0) = 0
+// S(x) = x^-1
+
+function S(m)
+	if(m eq [0,0,0,0]) then
+		return m;
+	end if;
+	F16<a> := GF(2, 4);
+	p := F16 ! m;
+	p := p^-1;
+	return ElementToSequence(p);
+end function;
+
+function _keySchedule2(K, n)
+	res := [];
+	for i in [1..n+1] do
+		res cat:= [K];
+		first := S(Vector(K[1..4]));
+		second := S(Vector(K[5..8]));
+		K := ElementToSequence(second) cat ElementToSequence(first);
+	end for;
+	return res;
+end function;
+
+function _mLay2(vett)
+	//build matrix
+	V8:=VectorSpace(GF(2),8);
+	v := V8 ! [1,1,1,1,1,0,0,0];
+	matrixBuilder := [];
+	for i in [1..8] do
+		matrixBuilder cat:= [v];
+		Rotate(~v, 1);
+	end for;
+	X := Matrix(GF(2), 8, 8, matrixBuilder);
+	return ElementToSequence(Transpose(X*Matrix(GF(2), 8, 1, vett)));
+end function;
+
+function SBOX2(m)
+	first := S(Vector(ElementToSequence(m)[1..4]));
+	second := S(Vector(ElementToSequence(m)[5..8]));
+	return ElementToSequence(first) cat ElementToSequence(second);
+end function;
+
+function ToyBlock2(K,M,n)
+	// keys
+	roundKeys := _keySchedule(K, n);
+	// round 0
+	res := Vector(GF(2),M) + Vector(GF(2),roundKeys[1]);
+	for i in [2..n+1] do
+		res := SBOX(res);
+		res := _mLay(res);
+		res := Vector(GF(2),res) + Vector(GF(2),roundKeys[i]);
+	end for;
+	return res;
+end function;
