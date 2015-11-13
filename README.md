@@ -9,3 +9,8 @@
 
 * A toy A5/1 stream cipher
 
+### ToyBlockCipher:
+
+* A toy block cipher
+* A toy block cipher with a unique SBOX based on the inverse of polynomials in F16
+
