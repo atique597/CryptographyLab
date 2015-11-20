@@ -1,0 +1,54 @@
+// EX 3. (BONUS)
+// Implement a function dixonFactorization(N,B)
+//   INPUT: RSA Modulus N and Factor Base B.
+//   OUTPUT: p and q prime such that p*q=N.
+
+// Test your function sending:
+// dixonFactorization(84923,[2, 3, 5, 7]);
+// => 163 521
+// example from wikipedia https://en.wikipedia.org/wiki/Dixon%27s_factorization_method
+
+function _isFactorableWithBase(B,N)
+  res := [0 : i in [1..#B]];
+  i := 1;
+  repeat
+    temp := N/B[i];
+    if(Minimum(Floor(temp), temp) eq temp) then
+      N := temp;
+      res[i] := res[i]+1;
+    else
+      i := i+1;
+      if(i eq #B+1) then break; end if;
+    end if;
+  until N eq 1;
+  return res, N eq 1;
+end function;
+
+function dixonFactorization(N,B)
+  start := Ceiling(Sqrt(N));
+  factorizations := [];
+  factorized := [];
+  repeat
+    toBeTest := Modexp(start,2,N);
+    res, isFactorizable := _isFactorableWithBase(B, toBeTest);
+    if(isFactorizable eq true) then factorizations cat:= [res]; factorized cat:= [start];  end if;
+    start := start + 1;
+  until #factorizations eq 4;
+  for j in [1..#factorizations] do
+    for k in [j+1..#factorizations] do
+      r :=  Integers() ! (factorized[j]*factorized[k] mod N);
+      factorizarionR := [(factorizations[j][i] + factorizations[k][i]) : i in [1..#B]];
+      congruentValue := 1;
+      for i in [1..#B] do
+         congruentValue := congruentValue * (B[i]^factorizarionR[i]);
+      end for;
+      isSquare, congruentValue := IsSquare(congruentValue);
+      if isSquare then
+        first := Gcd(Integers() ! (r-congruentValue), Integers() ! N);
+        second := Gcd(Integers() ! (r+congruentValue), Integers() ! N);
+        if(Minimum(first,second) ne 1) then return first, second; end if;
+      end if;
+    end for;
+  end for;
+  return first, second;
+end function;

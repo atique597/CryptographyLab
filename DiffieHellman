@@ -1,0 +1,96 @@
+// Diffe-Hellman implementation
+// In this exercise we implement Diffie-Hellman Key-exchange
+// 1. Implement a function genDHparamaters(pbits,qbits)
+//      INPUT:
+//        - pbits: the bitlength of prime p
+//        - qbits: is the length that at least one factor of p-1 must have
+//      OUTPUT:
+//        - p: a prime number of length pbits
+//        - q: a prime factor of p-1 of length qbits
+//        - g: an element of Z_p of order q
+// REMARKS:
+//   * choose p of the form q*r+1 where q is prime of length qbits and r is random
+//   * choose g such that g is h^((p-1)/q) where h is random (1 < h < p-1) and g not equal to 1
+
+
+function genDHparameters(pbits,qbits)
+	q := RandomPrime(qbits);
+	p := 4;
+	while(not IsPrime(p) and not Ilog(2, p) eq pbits) do
+		r := RandomBits(pbits-qbits);
+		p := q*r+1;
+	end while;
+	h := Random(p-2) + 1;
+	g := Modexp(h,Integers()!((p-1)/q), p);  // compute h^((p-1)/q) mod p
+	return p,q,g;
+end function;
+
+
+//
+// Check your code with the following test:
+// 
+procedure test11()
+  for pars in [[100,20],[256,64]] do
+    pbits := pars[1];
+    qbits := pars[2];
+    print "pbits, qits := ",pbits,qbits;
+    for t in [1..3] do
+      print "t := ",t;
+      p,q,g := genDHparameters(pbits,qbits);
+      if not(IsPrime(p)) or not(IsPrime(q)) then error "p or q is not prime"; end if;
+      if (p-1) mod q ne 0 then error "q is not a factor of p-1"; end if;
+      r := (p-1) div q;
+      if (Modexp(g,q,p) ne 1) or (g eq 1) then error "g has not order q"; end if;
+    end for;
+  end for;
+end procedure;
+ 
+// 2. Implement a function exchangeDH(p,g)
+//      INPUT:
+//        - p: a prime number
+//        - g: a (multiplicative) generator for elements {1..(p-1)}
+//      OUTPUT:
+//        - a: Alice's secret key
+//        - A: Alice's public key
+//        - b: Bob's secret key
+//        - B: Bob's public key
+//        - S: shared secret
+//        
+// RECALL that:
+//   * a and b are random 1 < a,b < p-1
+//   * A is g^a modulo p
+//   * B is g^b modulo p
+//   * S is g^ab modulo p
+// 
+// Check your code with the following test:
+
+function exchangeDH(p,g)
+	a := Random(p-1);
+	b := Random(p-1);
+	A := Modexp(g,a,p);
+	B := Modexp(g,b,p);
+	S := Modexp(g,a*b,p);
+	return a,A,b,B,S;
+end function;
+
+procedure test12()
+  for pars in [[100,20],[256,64]] do
+    pbits := pars[1];
+    qbits := pars[2];
+    print"pbits, qits := ",pbits,qbits;
+    p,q,g := genDHparameters(pbits,qbits);
+    print"p := ",p;
+    print"q := ",q;
+    print"g := ",g;    
+    for t in [1..3] do
+      a,A,b,B,S := exchangeDH(p,g);
+      print " t:= ",t;
+      print "a A b B S := ", a,A,b,B,S;
+      if Modexp(B,a,p) ne S then error "Alice does not compute the correct shared secret"; end if;
+      if Modexp(A,b,p) ne S then error "Bob does not compute the correct shared secret"; end if;
+    end for;
+  end for;
+
+end procedure;
+
+

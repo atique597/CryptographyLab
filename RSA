@@ -1,0 +1,103 @@
+// EX. 2
+// In this exercise we implement RSA Algorithm.
+// 1. Implement a function genRSAkeys(bitlength)
+//      INPUT:
+//        - the bitlength of modulus N
+//      OUTPUT:
+//        - N the modulus, which is product of two random primes
+//        - p,q the random primes for which N eq p*q
+//        - e the public exponent, which is an integer 1 < e < phi(N) and coprime with phi(N)
+//        - d the private exponent, which is the inverse of e mod phi(N)
+// 
+// RECALL that:
+//   * for N := p*q, phi(N):= (p-1)*(q-1).
+// 
+
+// compute Phi of Eulero of N=p*q
+function phi(p,q)
+  return (p-1)*(q-1);
+end function;
+
+function genRSAkeys(bitlength)
+  repeat
+    p := RandomPrime(Random([2..bitlength-2]));
+    q := RandomPrime(bitlength - Ilog(2,p));
+    N := p*q;
+  until Ilog(2,N) eq bitlength;
+  repeat
+    e := Random(phi(p,q)-1);
+  until Gcd(e,phi(p,q)) eq 1;
+  d := InverseMod(e,phi(p,q));
+  return N,p,q,e,d;
+end function;
+
+// Check your code with the following test:
+// 
+procedure test21()
+   for l in [10,20,30,50,100,256,512] do
+   print "l := ",l;
+     for t in [1..5] do
+     print "t := ",t;
+       N,p,q,e,d := genRSAkeys(l);
+       print "N := ",N;
+       print "p := ",p;
+       print "q := ",q;
+       print "e := ",e;
+       print "d := ",d;
+       if N ne p*q then error "N is not product of p and q"; end if;
+       if Ilog(2,N) ne l then error "N has not the correct length",Ilog(2,N); end if;
+       if e*d mod ((p-1)*(q-1)) ne 1 then error "e and d are not inverse modulo phi(N)"; end if;
+     end for;
+   end for;
+end procedure;
+// 
+// 2.a Implement a function RSAencrypt(m,N,e)
+//      INPUT:
+//        - m an integer 1 < m < N (the plaintext)
+//        - N, e RSA public key
+//      OUTPUT:
+//        - c the ciphertext
+// 
+
+function RSAencrypt(m,N,e)
+  return Modexp(m,e,N);
+end function;
+
+// 2.b Implement a function RSAdecrypt(c,N,d)
+//      INPUT:
+//        - c an integer 1 < c < N (the ciphertext)
+//        - N, d RSA private key
+//      OUTPUT:
+//        - m the plaintext
+
+function RSAdecrypt(c,N,d)
+  return Modexp(c,d,N);
+end function;
+// 
+// Check your code with the following test:
+//
+procedure test22()
+
+   for l in [50,100,256,512] do
+   print "l := ",l;
+     N,p,q,e,d := genRSAkeys(l);
+     print "N := ",N;
+     print "e := ",e;
+     print "d := ",d;     
+     for t in [1..3] do
+     print "t := ",t;
+     m := Random([2..(N-1)]);
+     c := RSAencrypt(m,N,e);
+     mm := RSAdecrypt(c,N,d);
+     if m ne mm then error "Encryption/Decryption does not work"; end if;
+     print "m := ",m;
+     print "c := ",c;
+     end for;
+  end for;
+end procedure;
+ 
+// USEFUL MAGMA FUNCTIONS FOR THIS SESSION:
+//   * Ilog(2,n): gives the bitlength of a number n (integer part of logarithm in base 2)
+//   * RandomPrime(bits): which gives you a random prime of bitlength 'bits'
+//   * Modexp(x,y,z) to efficiently compute x^y mod z
+//   * InverseMod(a,b): which gives you the inverse of 'a' modulo 'b'
