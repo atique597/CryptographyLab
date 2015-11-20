@@ -27,3 +27,7 @@
 ### DixonFactorization:
 
 * Dixon's factorization method with a factor base
+
+### RC4:
+
+* RC4 stream cipher implementation
